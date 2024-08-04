@@ -1,86 +1,108 @@
-let teclas = document.querySelectorAll('#teclado > [data-number]');
+let teclas = document.querySelectorAll("#teclado > [data-number]");
+let elementDisplay = document.getElementById("display");
 
 let reset = false;
-let operation = '';
+let operation = "";
 let memory = Number.NaN;
+let formatter = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 4 });
 
-let formatter = new Intl.NumberFormat('pt-BR', {maximumFractionDigits: 2});
 function parseFormatter(value) {
-    let number = value.replace(/\./g,'').replace(',','.')
+    let number = value.replace(/\./g, "").replace(",", ".");
     return number;
 }
+function inputDisplayNumber(dataNumber) {
+    let display = document.getElementById("display").innerText;
+    let value_display = parseFormatter(display);
+    let hasDecimal = display.indexOf(",") !== -1;
+    let decimalSize = display.length - display.indexOf(",");
+    if (display === "0" || reset) {
+        elementDisplay.innerText = dataNumber;
+        reset = false;
+    } else {
+        if (display.length < 22) {
+            if ((hasDecimal && decimalSize <= 4) || !hasDecimal) {
+                elementDisplay.innerText = formatter.format(
+                    value_display + dataNumber
+                );
+            }
+        }
+    }
+}
 
-for (let i=0; i < teclas.length; i++){
-    teclas[i].addEventListener('click', handleKeyPress);
-};
+function inputDisplayNotNumber(dataNumber) {
+    let display = document.getElementById("display").innerText;
+    let value_display = parseFormatter(display);
+    let hasDecimal = display.indexOf(",") !== -1;
+
+    if (dataNumber === "," && !hasDecimal) {
+        elementDisplay.innerText = value_display + dataNumber;
+    } else if (dataNumber === "AC") {
+        memory = Number.isNaN;
+        elementDisplay.innerText = "0";
+    } else if (dataNumber === "CE") {
+        if (display === "0") {
+            memory = Number.isNaN;
+        }
+        elementDisplay.innerText = "0";
+    } else {
+        handleMathOperation(Number(value_display), dataNumber);
+    }
+}
+
+function inputDisplayResult(value) {
+    if (
+        value < 1000000000000000000 &&
+        !Number.isNaN(value) &&
+        Number.isFinite(value)
+    ) {
+        elementDisplay.innerText = formatter.format(value);
+    } else {
+        elementDisplay.innerText = "Error";
+    }
+}
 
 function handleMathOperation(value, operator) {
-    if (isNaN(memory)) {
-        if (operator !== 'equal'){
-            memory = Number(value);
+    let isMemoryNumber = !isNaN(Number(memory));
+
+    reset = true;
+
+    if (!isMemoryNumber) {
+        if (operator !== "=") {
+            memory = value;
             operation = operator;
-            reset = true;
-        };
+        }
     } else {
-        let result = 0
-        if (operation === '+') {
-            result = Number(memory) + Number(value);
-            operation = operator;
-            reset = true;
-        } else if (operation === '-') {
-            result = Number(memory) - Number(value);
-            operation = operator;
-            reset = true;
-        } else if (operation === '*') {
-            result = Number(memory) * Number(value);
-            operation = operator;
-            reset = true;
-        } else if (operation === '/') {
-            result = Number(memory) / Number(value);
-            operation = operator;
-            reset = true;
-        };
-        if (operator === 'equal') {memory = Number.NaN} else {memory = result};
-        
-        return result;
-    };
-};
+        let result = 0;
+        if (operation === "+") {
+            result = memory + value;
+        } else if (operation === "-") {
+            result = memory - value;
+        } else if (operation === "*") {
+            result = memory * value;
+        } else if (operation === "/") {
+            result = memory / value;
+        }
+        memory = result;
+        operation = operator;
 
-function handleKeyPress (event) {
-    let element = event.target;
-    let button_value = element.getAttribute('data-number');
-    let display = document.getElementById('display');
-    let value_display = parseFormatter(display.innerText);
-
-    if (!display.innerText.includes(',') && button_value === ',') {
-        display.innerText += ',';
-    } else if (display.innerText === "0" && !isNaN(Number(button_value)) || reset && !isNaN(Number(button_value)) ){
-        display.innerText = button_value;
-        reset = false;
-    } else if (isNaN(Number(button_value))){
-        if (button_value === "AC") {
+        if (operator === "=") {
             memory = Number.NaN;
-            display.innerText = "0";
-        } else if (button_value === "CE") {
-            if (value_display === "0") {memory = Number.NaN}
-            display.innerText = "0";
-        } else if (Number.isNaN(Number(memory))) {
-            handleMathOperation(value_display, button_value);
-        } else {
-            display.innerText = formatter.format(handleMathOperation(value_display, button_value));
         }
+
+        inputDisplayResult(result);
+    }
+}
+function handleKeyPress(event) {
+    let button_value = event.target.getAttribute("data-number");
+    let isNumberButton = !isNaN(Number(button_value));
+
+    if (isNumberButton) {
+        inputDisplayNumber(button_value);
     } else {
-        if (display.innerText.indexOf(',') !== -1) {
-            if (display.innerText.length - display.innerText.indexOf(',') <= 2){
-                display.innerText = value_display + button_value;
-                display.innerText = formatter.format(display.innerText);
-            }
-        } else {
-            display.innerText = value_display + button_value;
-            display.innerText = formatter.format(display.innerText);
-        }
-    };
-};
+        inputDisplayNotNumber(button_value);
+    }
+}
 
-
-
+for (let i = 0; i < teclas.length; i++) {
+    teclas[i].addEventListener("click", handleKeyPress);
+}
